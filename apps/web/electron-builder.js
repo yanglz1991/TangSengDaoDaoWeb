@@ -23,7 +23,7 @@ module.exports = {
   },
   publish: [{
     provider: "generic",
-    url: "https://api.botgate.cn/v1/common/pcupdater/"
+    url: "http://qx.qhfhasina.com/v1/common/pcupdater/"
   }],
   mac: {
     extendInfo: {
@@ -75,7 +75,7 @@ module.exports = {
     // installerHeaderIcon: "./build/icon.ico", // 安装时头部图标
     createDesktopShortcut: true, // 创建桌面图标
     createStartMenuShortcut: true, // 创建开始菜单图标
-    shortcutName: "唐僧叨叨", // 图标名称
+    shortcutName: "QX", // 图标名称
   },
   linux: {
     target: ["AppImage", "deb"],

@@ -39,10 +39,10 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 let mainMenu: (Electron.MenuItemConstructorOptions | Electron.MenuItem)[] = [
   {
-    label: "唐僧叨叨",
+    label: "QX",
     submenu: [
       {
-        label: `关于唐僧叨叨`,
+        label: `关于QX`,
       },
       { label: "服务", role: "services" },
       { type: "separator" },
@@ -489,7 +489,7 @@ app.on("ready", () => {
   createMainWindow(); // 创建窗口
 
   if (isWin) {
-    app.setAppUserModelId("唐僧叨叨");
+    app.setAppUserModelId("QX");
   }
 
   screenshots = new Screenshots({

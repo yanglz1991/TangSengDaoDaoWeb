@@ -49,6 +49,8 @@
     "@tsdaodao/base": "*",
     "@tsdaodao/contacts": "*",
     "@tsdaodao/datasource": "*",
+    "@tsdaodao/file": "*",
+    "@tsdaodao/groupmanager": "*",
     "@tsdaodao/login": "*",
     "@types/react-lazyload": "^3.2.0",
     "@types/react-mentions": "^4.1.5",

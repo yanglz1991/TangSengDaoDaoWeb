@@ -467,20 +467,20 @@ export default class BaseModule implements IModule {
       );
     });
 
-    WKApp.endpoints.registerChatToolbar("chattoolbar.screenshot", (ctx) => {
-      return (
-        <IconClick
-          icon={require("./assets/toolbars/func_screenshot.svg").default}
-          onClick={() => {
-            if ((window as any).__POWERED_ELECTRON__) {
-              (window as any).ipc.send('screenshots-start', {})
-            } else {
-              window.open("https://www.snipaste.com");
-            }
-          }}
-        ></IconClick>
-      );
-    });
+    // WKApp.endpoints.registerChatToolbar("chattoolbar.screenshot", (ctx) => {
+    //   return (
+    //     <IconClick
+    //       icon={require("./assets/toolbars/func_screenshot.svg").default}
+    //       onClick={() => {
+    //         if ((window as any).__POWERED_ELECTRON__) {
+    //           (window as any).ipc.send('screenshots-start', {})
+    //         } else {
+    //           window.open("https://www.snipaste.com");
+    //         }
+    //       }}
+    //     ></IconClick>
+    //   );
+    // });
     WKApp.endpoints.registerChatToolbar("chattoolbar.image", (ctx) => {
       return (
         <ImageToolbar

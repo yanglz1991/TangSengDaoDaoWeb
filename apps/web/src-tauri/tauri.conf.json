@@ -65,7 +65,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-          "http://qx.qhfhasina.com/api/v1/common/updater/{{target}}/{{current_version}}"
+          "https://qx.qhfhasina.com/api/v1/common/updater/{{target}}/{{current_version}}"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyOTBCMTNGNDczQTEzREIKUldUYkV6cEhQN0dRMGd2MWkzdUNMTmlhRXVWbXluamlDSUlVajFWK0p5YXAwanJDREhyajJNclIK"

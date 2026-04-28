@@ -23,7 +23,7 @@ module.exports = {
   },
   publish: [{
     provider: "generic",
-    url: "http://qx.qhfhasina.com/api/v1/common/pcupdater/"
+    url: "https://qx.qhfhasina.com/api/v1/common/pcupdater/"
   }],
   mac: {
     extendInfo: {

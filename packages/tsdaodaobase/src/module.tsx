@@ -648,45 +648,14 @@ export default class BaseModule implements IModule {
                       });
                     return;
                   },
-                  "设置备注"
+                  "设置备注",
+                  30
                 );
               },
             },
           })
         );
-        if (fromSubscriberOfUser) {
-          let joinDesc = `${fromSubscriberOfUser.orgData.created_at.substr(
-            0,
-            10
-          )}`;
-          if (
-            fromSubscriberOfUser.orgData?.invite_uid &&
-            fromSubscriberOfUser.orgData?.invite_uid !== ""
-          ) {
-            const inviterChannel = new Channel(
-              fromSubscriberOfUser.orgData?.invite_uid,
-              ChannelTypePerson
-            );
-            const inviteChannelInfo =
-              WKSDK.shared().channelManager.getChannelInfo(inviterChannel);
-            if (inviteChannelInfo) {
-              joinDesc += ` ${inviteChannelInfo.title}邀请入群`;
-            } else {
-              WKSDK.shared().channelManager.fetchChannelInfo(inviterChannel);
-            }
-          } else {
-            joinDesc += "加入群聊";
-          }
-          rows.push(
-            new Row({
-              cell: ListItem,
-              properties: {
-                title: "进群方式",
-                subTitle: joinDesc,
-              },
-            })
-          );
-        }
+        // 群成员资料页隐藏"进群方式"和加入时间
 
         return new Section({
           rows: rows,
@@ -1303,46 +1272,11 @@ export default class BaseModule implements IModule {
       3000
     );
 
+    // 去掉"我在本群的昵称"设置入口
     WKApp.shared.channelSettingRegister(
       "channel.base.setting3",
       (context) => {
-        const data = context.routeData() as ChannelSettingRouteData;
-        if (data.channel.channelType !== ChannelTypeGroup) {
-          return undefined;
-        }
-
-        let name = data.subscriberOfMe?.remark;
-        if (!name || name === "") {
-          name = data.subscriberOfMe?.name;
-        }
-
-        return new Section({
-          rows: [
-            new Row({
-              cell: ListItem,
-              properties: {
-                title: "我在本群的昵称",
-                subTitle: name,
-                onClick: () => {
-                  this.inputEditPush(
-                    context,
-                    name || "",
-                    (value: string) => {
-                      return WKApp.dataSource.channelDataSource.subscriberAttrUpdate(
-                        data.channel,
-                        WKApp.loginInfo.uid || "",
-                        { remark: value }
-                      );
-                    },
-                    "在这里可以设置你在这个群里的昵称。这个昵称只会在此群内显示。",
-                    10,
-                    true
-                  );
-                },
-              },
-            }),
-          ],
-        });
+        return undefined;
       },
       4000
     );

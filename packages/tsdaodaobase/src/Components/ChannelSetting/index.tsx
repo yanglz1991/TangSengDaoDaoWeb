@@ -50,8 +50,12 @@ export default class ChannelSetting extends Component<ChannelSettingProps> {
             if(channelInfo && channelInfo.orgData.member_count) {
                 memberCount = channelInfo.orgData.member_count
             }
-           
-            return <RoutePage title={ vm.channel.channelType === ChannelTypeCustomerService?"聊天信息":`聊天信息（${memberCount}）`} onClose={() => {
+            // 群成员人数仅管理员/群主可见
+            const isAdmin = vm.routeData.isManagerOrCreatorOfMe
+            const titleText = vm.channel.channelType === ChannelTypeCustomerService
+                ? "聊天信息"
+                : (isAdmin ? `聊天信息（${memberCount}）` : "聊天信息")
+            return <RoutePage title={titleText} onClose={() => {
                 if (onClose) {
                     onClose()
                 }

@@ -1,7 +1,7 @@
 module.exports = {
-  productName: "TangSengDaoDao", //项目名
-  appId: "com.xinbida.macapp",
-  copyright: "Copyright © ShangHaiXinBiDa", //版权
+  productName: "QX", //项目名
+  appId: "com.im.qx",
+  copyright: "Copyright © QX", //版权
   directories: {
     output: "dist-ele", // 输出文件夹
   },

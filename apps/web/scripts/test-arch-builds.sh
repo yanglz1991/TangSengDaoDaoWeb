@@ -81,7 +81,7 @@ verify_dmg_architecture() {
     if hdiutil attach "$dmg_file" -mountpoint "$mount_point" -quiet 2>/dev/null; then
         local app_bundle=$(find "$mount_point" -name "*.app" | head -1)
         if [ -n "$app_bundle" ]; then
-            local binary_path="$app_bundle/Contents/MacOS/TangSengDaoDao"
+            local binary_path="$app_bundle/Contents/MacOS/QX"
             if [ -f "$binary_path" ]; then
                 local archs=$(lipo -info "$binary_path" 2>/dev/null || echo "Could not read architectures")
                 echo "     🏗️  Binary architectures: $archs"

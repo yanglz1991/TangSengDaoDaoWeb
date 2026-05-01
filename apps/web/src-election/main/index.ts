@@ -485,12 +485,13 @@ if (!gotTheLock) {
 }
 
 app.on("ready", () => {
-  regShortcut();
-  createMainWindow(); // 创建窗口
-
+  // AUMID 必须在创建 BrowserWindow 之前设置，否则 Win10 任务栏/托盘会因 AUMID 不一致清掉图标
   if (isWin) {
     app.setAppUserModelId("QX");
   }
+
+  regShortcut();
+  createMainWindow(); // 创建窗口
 
   screenshots = new Screenshots({
     singleWindow: true,

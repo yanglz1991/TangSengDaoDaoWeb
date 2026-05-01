@@ -7,6 +7,7 @@ module.exports = {
   },
   npmRebuild: false,
   asar: true,
+  compression: "normal",
   asarUnpack: [
     "node_modules/node-screenshots-darwin-x64/**/*",
     "node_modules/node-screenshots-darwin-arm64/**/*",
@@ -17,7 +18,7 @@ module.exports = {
   electronDownload: {
     mirror: "https://registry.npmmirror.com/-/binary/electron/",
   },
-  files: ["resources/**/*","out-election/**/*", "build/**/*"], // 需要打包的文件
+  files: ["resources/**/*", "out-election/**/*", "build/**/*"], // 需要打包的文件
   extraMetadata: {
     main: "out-election/main/index.js",
   },
@@ -62,12 +63,18 @@ module.exports = {
   win: {
     icon: "resources/icons/icon.ico",
     verifyUpdateCodeSignature: false,
-    target: ["nsis", "zip"],
+    target: [
+      { target: "nsis", arch: ["x64"] },
+      { target: "zip", arch: ["x64"] }
+    ],
+    requestedExecutionLevel: "requireAdministrator",
     // eslint-disable-next-line no-template-curly-in-string
     artifactName: "${productName}-Setup-${version}.${ext}"
   },
   nsis: {
     oneClick: false, // 是否一键安装
+    perMachine: true, // 全机安装到 Program Files，而非 AppData，降低 Win10 Defender 隔离概率
+    differentialPackage: false, // 关闭差分包 blockmap，降低启发式误报命中率
     allowElevation: true, // 允许请求提升。 如果为false，则用户必须使用提升的权限重新启动安装程序。
     allowToChangeInstallationDirectory: true, // 允许修改安装目录
     // installerIcon: "./build/icon.ico",// 安装图标

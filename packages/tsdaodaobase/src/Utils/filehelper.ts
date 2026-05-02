@@ -8,14 +8,16 @@ export enum FileType {
     PDF,
     ZIP,
     RAR,
+    Video,
 }
 
 export default class FileHelper {
 
 
-    static imgExt: Array<string> = new Array<string>(".png", ".jpg", ".jpeg", ".bmp", ".gif");//图片文件的后缀名
+    static imgExt: Array<string> = new Array<string>(".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp");//图片文件的后缀名
     static docExt: Array<string> = new Array<string>(".doc", ".docx");//word文件的后缀名
     static xlsExt: Array<string> = new Array<string>(".xls", ".xlsx");//excel文件的后缀名
+    static videoExt: Array<string> = new Array<string>(".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".flv", ".3gp");//视频文件的后缀名
 
     static getFileExt(fileName:string) {
         const i = fileName.lastIndexOf(".")
@@ -25,6 +27,17 @@ export default class FileHelper {
         }
         return ""
     }
+
+    // 判断是否为图片文件
+    static isImageFile(fileName: string) {
+        return this.contain(this.getFileExt(fileName), this.imgExt);
+    }
+
+    // 判断是否为视频文件
+    static isVideoFile(fileName: string) {
+        return this.contain(this.getFileExt(fileName), this.videoExt);
+    }
+
     // 获取文件类型
     static getFileType(fileName: string) {
         const i = fileName.lastIndexOf(".")
@@ -32,6 +45,9 @@ export default class FileHelper {
             const ext = fileName.substring(i).toLowerCase();
             if (this.contain(ext, this.imgExt)) {
                 return FileType.Image;
+            }
+            if (this.contain(ext, this.videoExt)) {
+                return FileType.Video;
             }
             if (this.contain(ext, this.docExt)) {
                 return FileType.Word;

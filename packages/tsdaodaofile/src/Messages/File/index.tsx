@@ -29,6 +29,13 @@ export class FileContent extends MediaMessageContent {
         return MessageContentTypeConst.file
     }
     get conversationDigest() {
+        // 根据文件名后缀区分显示摘要，图片/视频文件显示对应类型
+        if (FileHelper.isImageFile(this.name || "")) {
+            return "[图片]"
+        }
+        if (FileHelper.isVideoFile(this.name || "")) {
+            return "[视频]"
+        }
         return "[文件]"
     }
 
@@ -50,16 +57,57 @@ export class FileCell extends MessageCell<MessageBaseCellProps> {
         this.fileIconInfo = FileHelper.getFileIconInfo(content.name || "")
     }
 
+    // 构造下载/预览URL，带上原始文件名
+    buildDownloadURL(content: FileContent) {
+        let downloadURL = WKApp.dataSource.commonDataSource.getImageURL(content.url || '')
+        if (downloadURL.indexOf("?") != -1) {
+            downloadURL += "&filename=" + content.name
+        } else {
+            downloadURL += "?filename=" + content.name
+        }
+        return downloadURL
+    }
+
+    // 渲染图片形式
+    renderImage(content: FileContent) {
+        const { message, context } = this.props
+        const imageURL = this.buildDownloadURL(content)
+        return <MessageBase context={context} message={message} hiddeBubble={true} bubbleStyle={{ padding: '0px' }}>
+            <div className="wk-message-file-media" onClick={() => {
+                window.open(imageURL, '_blank')
+            }}>
+                <img alt={content.name} src={imageURL} style={{ maxWidth: 250, maxHeight: 250, borderRadius: 5, display: 'block', cursor: 'pointer' }} />
+            </div>
+        </MessageBase>
+    }
+
+    // 渲染视频形式
+    renderVideo(content: FileContent) {
+        const { message, context } = this.props
+        const videoURL = WKApp.dataSource.commonDataSource.getFileURL(content.url || '')
+        return <MessageBase context={context} message={message} hiddeBubble={true} bubbleStyle={{ padding: '0px' }}>
+            <div className="wk-message-file-media">
+                <video controls src={videoURL} style={{ maxWidth: 380, maxHeight: 380, borderRadius: 5, display: 'block', background: '#000' }} />
+            </div>
+        </MessageBase>
+    }
+
     render() {
-        const { message,context } = this.props
+        const { message, context } = this.props
         const content = message.content as FileContent
         const isSend = message.send;
-       let downloadURL = WKApp.dataSource.commonDataSource.getImageURL(content.url || '')
-       if(downloadURL.indexOf("?")!=-1) {
-         downloadURL += "&filename=" + content.name
-       }else {
-        downloadURL += "?filename=" + content.name
-       }
+        const fileName = content.name || ""
+
+        // 手机端将图片/视频作为文件发送时，网页端按图片/视频直接显示
+        if (FileHelper.isImageFile(fileName)) {
+            return this.renderImage(content)
+        }
+        if (FileHelper.isVideoFile(fileName)) {
+            return this.renderVideo(content)
+        }
+
+        // 其它类型维持原有文件展示形式
+        const downloadURL = this.buildDownloadURL(content)
         return <MessageBase context={context} message={message} bubbleStyle={{ padding: '0px' }}>
             <div className="wk-message-file" onClick={() => {
                 window.open(`${downloadURL}`, 'top');

@@ -5796,6 +5796,15 @@ electron@26.0.0:
     "@types/node" "^18.11.18"
     extract-zip "^2.0.1"
 
+electron@26.6.10:
+  version "26.6.10"
+  resolved "https://registry.npmmirror.com/electron/-/electron-26.6.10.tgz#01ca7610bd662033ed3ceb70804cbf940c7e6756"
+  integrity sha512-pV2SD0RXzAiNRb/2yZrsVmVkBOMrf+DVsPulIgRjlL0+My9BL5spFuhHVMQO9yHl9tFpWtuRpQv0ofM/i9P8xg==
+  dependencies:
+    "@electron/get" "^2.0.0"
+    "@types/node" "^18.11.18"
+    extract-zip "^2.0.1"
+
 emittery@^0.10.2:
   version "0.10.2"
   resolved "https://registry.npmmirror.com/emittery/-/emittery-0.10.2.tgz"

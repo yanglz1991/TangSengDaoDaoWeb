@@ -499,6 +499,31 @@ function onDeepLink(url: string) {
 }
 
 app.setName(TSDD_FONFIG.name);
+
+// Win32 兼容开关 —— 必须在 app.ready 之前调用
+//
+// 实测：这些开关在客户机器上是必要的。仅靠 electronFuses 关闭 ASAR Integrity
+// 不足以让客户机器启动渲染进程；至少其中一个开关也是关键修复。
+// 等后续拿到日志后可做 A/B 缩小到真正必需的最小集，目前先全部保留确保稳定。
+//
+// 目前打开的开关：
+//   - 禁用 GPU 硬件加速（覆盖云电脑 / 老显卡 / 远程桌面 GPU 缺失场景）
+//   - --no-sandbox（覆盖 Administrator / VDI 等无法降权 token 的场景）
+//   - --disable-features=RendererCodeIntegrity（覆盖 Win 企业策略 CIG 阻止 renderer 加载非 MS 签名 DLL 场景）
+if (process.platform === "win32") {
+  try {
+    app.disableHardwareAcceleration();
+    app.commandLine.appendSwitch("disable-gpu");
+    app.commandLine.appendSwitch("disable-gpu-compositing");
+    app.commandLine.appendSwitch("disable-software-rasterizer");
+    app.commandLine.appendSwitch("no-sandbox");
+    app.commandLine.appendSwitch("disable-features", "RendererCodeIntegrity");
+    console.info("[boot] win32 compat switches applied: no-sandbox, disable-gpu, disable-features=RendererCodeIntegrity");
+  } catch (err) {
+    console.error("[boot] applying win32 compat switches failed", err);
+  }
+}
+
 // isDevelopment && app.dock && app.dock.setIcon(logo);
 app.on("open-url", (event, url) => {
   onDeepLink(url);

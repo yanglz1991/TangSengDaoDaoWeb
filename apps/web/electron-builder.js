@@ -18,6 +18,17 @@ module.exports = {
   electronDownload: {
     mirror: "https://registry.npmmirror.com/-/binary/electron/",
   },
+  // Electron Fuses —— 写入 Electron 二进制的运行时开关
+  //
+  // embeddedAsarIntegrityValidation 默认开启会让 Electron 启动 renderer 前校验
+  // app.asar 的 SHA-256 与 exe 内置哈希是否一致，一旦客户机器上 AV / EDR / 系统优化
+  // 工具对 asar 做过任何修改（即便只动了一个 .node 文件），哈希失配 → renderer
+  // launch-failed, exitCode: 18，主进程随即退出，表现为"窗口闪一下白屏后消失"。
+  // 关闭后渲染进程不再做完整性校验，能容忍 asar 被三方安全软件改动。
+  electronFuses: {
+    enableEmbeddedAsarIntegrityValidation: false,
+    onlyLoadAppFromAsar: false,
+  },
   files: ["resources/**/*", "out-election/**/*", "build/**/*"], // 需要打包的文件
   extraMetadata: {
     main: "out-election/main/index.js",

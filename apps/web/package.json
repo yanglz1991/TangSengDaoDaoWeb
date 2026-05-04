@@ -1,6 +1,7 @@
 {
   "name": "@tsdaodao/web",
-  "version": "1.0.6",
+  "productName": "QX",
+  "version": "1.1.4",
   "private": true,
   "main": "out-election/main/index.js",
   "homepage": ".",
@@ -81,7 +82,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "customize-cra": "^1.0.0",
-    "electron": "26.0.0",
+    "electron": "26.6.10",
     "electron-builder": "^26.0.12",
     "eslint-config-react-app": "^7.0.1",
     "kill-port": "^2.0.1",

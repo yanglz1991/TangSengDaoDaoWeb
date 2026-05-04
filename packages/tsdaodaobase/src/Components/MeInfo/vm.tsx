@@ -124,7 +124,33 @@ export class MeInfoVM extends ProviderListener {
                         title: `${WKApp.config.appName}号`,
                         subTitle: WKApp.loginInfo.shortNo,
                         onClick: () => {
-
+                            // 与移动端保持一致：只允许修改一次，short_status=1 表示已修改
+                            if (WKApp.loginInfo.shortStatus === 1) {
+                                Toast.info(`${WKApp.config.appName}号只能修改一次`)
+                                return
+                            }
+                            this.inputEditPush(context, WKApp.loginInfo.shortNo || "", async (value) => {
+                                const v = value.trim()
+                                if (v === "") {
+                                    Toast.error(`${WKApp.config.appName}号不能为空！`)
+                                    return
+                                }
+                                // 基础格式校验：6-20 位字母/数字/下划线，且必须以字母开头
+                                if (!/^[a-zA-Z][a-zA-Z0-9_]{5,19}$/.test(v)) {
+                                    Toast.error(`请输入 6-20 位字母/数字/下划线，且以字母开头`)
+                                    return
+                                }
+                                try {
+                                    await WKApp.apiClient.put("user/current", { short_no: v })
+                                } catch (err: any) {
+                                    Toast.error(err?.msg || "修改失败")
+                                    return
+                                }
+                                WKApp.loginInfo.shortNo = v
+                                WKApp.loginInfo.shortStatus = 1
+                                WKApp.loginInfo.save()
+                                Toast.success("修改成功")
+                            }, `设置${WKApp.config.appName}号（只能修改一次）`, 20)
                         }
                     }
                 }),

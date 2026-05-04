@@ -102,6 +102,7 @@ export type MessageDeleteListener = (
 export class LoginInfo {
   appID!: string;
   shortNo!: string; // 短号
+  shortStatus!: number; // 短号是否已修改 0.未修改 1.已修改
   token?: string;
   uid?: string;
   name: string | undefined;
@@ -115,6 +116,7 @@ export class LoginInfo {
   public save() {
     this.setStorageItemForSID("app_id", this.appID ?? "");
     this.setStorageItemForSID("short_no", this.shortNo ?? "");
+    this.setStorageItemForSID("short_status", `${this.shortStatus ?? 0}`);
     this.setStorageItemForSID("uid", this.uid ?? "");
     this.setStorageItemForSID("token", this.token ?? "");
     this.setStorageItemForSID("name", this.name ?? "");
@@ -173,6 +175,8 @@ export class LoginInfo {
   public load() {
     this.uid = this.getStorageItemForSID("uid") || "";
     this.shortNo = this.getStorageItemForSID("short_no") || "";
+    const shortStatusStr = this.getStorageItemForSID("short_status");
+    this.shortStatus = shortStatusStr ? parseInt(shortStatusStr) : 0;
     this.token = this.getStorageItemForSID("token") || "";
     this.name = this.getStorageItemForSID("name") || "";
     this.appID = this.getStorageItemForSID("app_id") || "";

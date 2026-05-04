@@ -1,3 +1,4 @@
+import "./logger"; // 必须最先 import，保证后续任何崩溃都被捕获
 import {
   app,
   BrowserWindow,
@@ -367,9 +368,40 @@ const createMainWindow = async () => {
   mainWindow = new BrowserWindow(getWindowConfig());
   mainWindow.center();
   mainWindow.once("ready-to-show", () => {
+    console.info("[mainWindow] ready-to-show");
     mainWindow.show(); // 显示窗口
     mainWindow.focus();
   });
+
+  // 渲染进程 / 页面加载诊断监听（帮助定位客户闪退、白屏）
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_e: any, errorCode: number, errorDescription: string, validatedURL: string) => {
+      console.error(
+        "[mainWindow did-fail-load]",
+        { errorCode, errorDescription, validatedURL }
+      );
+    }
+  );
+  mainWindow.webContents.on("did-finish-load", () => {
+    console.info("[mainWindow did-finish-load]", mainWindow.webContents.getURL());
+  });
+  mainWindow.webContents.on("render-process-gone", (_e: any, details: any) => {
+    console.error("[mainWindow render-process-gone]", details);
+  });
+  mainWindow.webContents.on("unresponsive", () => {
+    console.warn("[mainWindow unresponsive]");
+  });
+  mainWindow.webContents.on("responsive", () => {
+    console.info("[mainWindow responsive]");
+  });
+  mainWindow.webContents.on(
+    "console-message",
+    (_e: any, level: number, message: string, line: number, sourceId: string) => {
+      // 把渲染进程 console 转到主日志
+      console.info(`[renderer] level=${level} ${sourceId}:${line} ${message}`);
+    }
+  );
 
   mainWindow.on("close", (e: any) => {
     if (forceQuit || !tray) {
@@ -447,8 +479,12 @@ const createMainWindow = async () => {
     electronNotificationManager.testIconLoading();
   }
 
-  // 检查更新
-  checkUpdate(mainWindow)
+  // 检查更新（包一层 try/catch，避免 autoUpdater 的网络 / 证书异常在某些客户机器上未捕获而炸掉主进程）
+  try {
+    checkUpdate(mainWindow);
+  } catch (err) {
+    console.error("[checkUpdate init error]", err);
+  }
 };
 
 // 重启应用
@@ -593,6 +629,19 @@ app.on("before-quit", () => {
 
 // 除了 macOS 外，当所有窗口都被关闭的时候退出程序。 macOS窗口全部关闭时,dock中程序不会退出
 app.on("window-all-closed", () => {
+  console.warn("[window-all-closed] quitting app, platform=", process.platform);
   process.platform !== "darwin" && app.quit();
+});
+
+app.on("before-quit", () => {
+  console.info("[before-quit]");
+});
+
+app.on("will-quit", () => {
+  console.info("[will-quit]");
+});
+
+app.on("quit", (_e, exitCode) => {
+  console.info("[quit] exitCode=", exitCode);
 });
 

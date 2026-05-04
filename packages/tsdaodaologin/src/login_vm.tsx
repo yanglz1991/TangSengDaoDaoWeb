@@ -151,6 +151,7 @@ export class LoginVM extends ProviderListener {
         loginInfo.appID = data.app_id
         loginInfo.uid = data.uid
         loginInfo.shortNo = data.short_no
+        loginInfo.shortStatus = data.short_status ?? 0
         loginInfo.token = data.token
         loginInfo.name = data.name
         loginInfo.sex = data.sex

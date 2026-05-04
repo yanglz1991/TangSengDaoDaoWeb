@@ -1,21 +1,40 @@
-import { MessageContent } from "wukongimjssdk";
+import { MediaMessageContent } from "wukongimjssdk";
 import React from "react";
 import WKApp from "../../App";
 import MessageBase from "../Base";
 import { MessageCell } from "../MessageCell";
+import { MessageContentTypeConst } from "../../Service/Const";
 import "./index.css"
 
-export class VideoContent extends MessageContent {
-    url!: string  // 小视频下载地址
-    cover!: string // 小视频封面图片下载地址
+export class VideoContent extends MediaMessageContent {
+    cover: string = "" // 小视频封面图片下载地址
     size: number = 0 // 小视频大小 单位byte
-    width!: number // 小视频宽度
-    height!: number // 小视频高度
-    second!: number // 小视频秒长
+    width: number = 0 // 小视频宽度
+    height: number = 0 // 小视频高度
+    second: number = 0 // 小视频秒长
+
+    constructor(file?: File, cover?: string, width?: number, height?: number, second?: number) {
+        super()
+        if (file) {
+            this.file = file
+            this.size = file.size
+            // 视频后缀，默认 .mp4，兼容 mov、webm 等
+            const dot = file.name.lastIndexOf(".")
+            this.extension = dot >= 0 ? file.name.substring(dot) : ".mp4"
+        }
+        if (cover !== undefined) this.cover = cover
+        if (width !== undefined) this.width = width
+        if (height !== undefined) this.height = height
+        if (second !== undefined) this.second = second
+    }
+
+    get contentType() {
+        return MessageContentTypeConst.smallVideo
+    }
 
     decodeJSON(content: any) {
-        this.url = content["url"] || 0
-        this.cover = content["cover"] || 0
+        this.url = content["url"] || ""
+        this.cover = content["cover"] || ""
         this.size = content["size"] || 0
         this.width = content["width"] || 0
         this.height = content["height"] || 0
@@ -31,6 +50,12 @@ export class VideoContent extends MessageContent {
         return "[小视频]"
     }
 
+    public set url(url: string) {
+        this.remoteUrl = url
+    }
+    public get url() {
+        return this.remoteUrl
+    }
 }
 
 interface VideoCellState {

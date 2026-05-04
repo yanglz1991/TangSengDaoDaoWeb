@@ -1,4 +1,5 @@
-import { ConversationContext, FileHelper, ImageContent, WKApp } from "@tsdaodao/base";
+import { ConversationContext, FileHelper, ImageContent, VideoContent, WKApp } from "@tsdaodao/base";
+import axios from "axios";
 import React from "react";
 import { Component, ReactNode } from "react";
 import { FileContent } from "../Messages/File";
@@ -20,6 +21,8 @@ interface FileToolbarState {
     canSend?: boolean
     width?: number
     height?: number
+    videoSecond?: number
+    videoCoverDataUrl?: string
 }
 
 export default class FileToolbar extends Component<FileToolbarProps, FileToolbarState>{
@@ -77,6 +80,31 @@ export default class FileToolbar extends Component<FileToolbarProps, FileToolbar
                     showDialog: true,
                 });
             };
+        } else if ((file.type && file.type.startsWith('video/')) || FileHelper.isVideoFile(file.name || "")) {
+            // 视频文件：读取宽高/时长并截取首帧作为封面，按视频形式发送
+            this.extractVideoMeta(file).then((meta) => {
+                self.setState({
+                    file: file,
+                    fileType: "video",
+                    previewUrl: meta.coverDataUrl,
+                    width: meta.width,
+                    height: meta.height,
+                    videoSecond: meta.second,
+                    videoCoverDataUrl: meta.coverDataUrl,
+                    showDialog: true,
+                    canSend: true,
+                })
+            }).catch(() => {
+                // 解析失败则按文件发送
+                const fileIconInfo = FileHelper.getFileIconInfo(file.name);
+                self.setState({
+                    fileType: 'file',
+                    fileIconInfo: fileIconInfo,
+                    file: file,
+                    showDialog: true,
+                    canSend: true,
+                })
+            })
         } else {
             const fileIconInfo = FileHelper.getFileIconInfo(file.name);
             this.setState({
@@ -90,15 +118,109 @@ export default class FileToolbar extends Component<FileToolbarProps, FileToolbar
 
     }
 
-    onSend() {
-        const {conversationContext} = this.props
-        const {  file, previewUrl,width,height,fileType } = this.state
-        if(fileType === "image") {
-            conversationContext.sendMessage(new ImageContent(file,previewUrl,width,height))
-        }else{
+    // 读取视频元数据并截取首帧作为封面
+    extractVideoMeta(file: File): Promise<{ width: number, height: number, second: number, coverDataUrl: string }> {
+        return new Promise((resolve, reject) => {
+            try {
+                const url = URL.createObjectURL(file)
+                const video = document.createElement("video")
+                video.preload = "metadata"
+                video.muted = true
+                video.playsInline = true
+                video.src = url
+                video.onloadedmetadata = () => {
+                    // 跳到 0.1s 处再截图，避免首帧黑屏
+                    try {
+                        video.currentTime = Math.min(0.1, (video.duration || 0) / 2)
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+                video.onseeked = () => {
+                    try {
+                        const canvas = document.createElement("canvas")
+                        canvas.width = video.videoWidth
+                        canvas.height = video.videoHeight
+                        const ctx = canvas.getContext("2d")
+                        if (ctx) {
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        }
+                        const coverDataUrl = canvas.toDataURL("image/jpeg", 0.8)
+                        URL.revokeObjectURL(url)
+                        resolve({
+                            width: video.videoWidth,
+                            height: video.videoHeight,
+                            second: Math.floor(video.duration || 0),
+                            coverDataUrl,
+                        })
+                    } catch (err) {
+                        URL.revokeObjectURL(url)
+                        reject(err)
+                    }
+                }
+                video.onerror = () => {
+                    URL.revokeObjectURL(url)
+                    reject(new Error("video load failed"))
+                }
+            } catch (err) {
+                reject(err)
+            }
+        })
+    }
+
+    // 将 dataURL 转换为 Blob/File
+    dataURLToBlob(dataURL: string): Blob {
+        const arr = dataURL.split(",")
+        const m = arr[0].match(/:(.*?);/)
+        const mime = m ? m[1] : "image/jpeg"
+        const bstr = atob(arr[1])
+        let n = bstr.length
+        const u8 = new Uint8Array(n)
+        while (n--) {
+            u8[n] = bstr.charCodeAt(n)
+        }
+        return new Blob([u8], { type: mime })
+    }
+
+    // 上传视频封面，返回服务器路径
+    async uploadCover(coverDataUrl: string): Promise<string | undefined> {
+        try {
+            const conversationContext = this.props.conversationContext
+            const channel = conversationContext.channel()
+            const blob = this.dataURLToBlob(coverDataUrl)
+            const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
+            const path = `/${channel.channelType}/${channel.channelID}/${fileName}`
+            const result: any = await WKApp.apiClient.get(`file/upload?path=${path}&type=chat`)
+            const uploadURL = result?.url
+            if (!uploadURL) return undefined
+            const form = new FormData()
+            form.append("file", blob, fileName)
+            const resp = await axios.post(uploadURL, form, { headers: { "Content-Type": "multipart/form-data" } })
+            return resp?.data?.path
+        } catch (err) {
+            console.warn("upload video cover failed", err)
+            return undefined
+        }
+    }
+
+    async onSend() {
+        const { conversationContext } = this.props
+        const { file, previewUrl, width, height, fileType, videoSecond, videoCoverDataUrl } = this.state
+        if (fileType === "image") {
+            conversationContext.sendMessage(new ImageContent(file, previewUrl, width, height))
+        } else if (fileType === "video") {
+            // 先关闭对话框，避免阻塞
+            this.setState({ showDialog: false })
+            let coverPath = ""
+            if (videoCoverDataUrl) {
+                coverPath = (await this.uploadCover(videoCoverDataUrl)) || ""
+            }
+            conversationContext.sendMessage(new VideoContent(file, coverPath, width || 0, height || 0, videoSecond || 0))
+            return
+        } else {
             conversationContext.sendMessage(new FileContent(file))
         }
-       
+
         this.setState({
             showDialog: false,
         });
@@ -175,12 +297,16 @@ class ImageDialog extends Component<ImageDialogProps> {
                 <div className="wk-imagedialog-content-close" onClick={onClose}>
                     <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2683" ><path d="M568.92178541 508.23169412l299.36805789-299.42461715a39.13899415 39.13899415 0 0 0 0-55.1452591L866.64962537 152.02159989a39.13899415 39.13899415 0 0 0-55.08869988 0L512.19286756 451.84213173 212.76825042 151.90848141a39.13899415 39.13899415 0 0 0-55.0886999 0L155.98277331 153.54869938a38.46028327 38.46028327 0 0 0 0 55.08869987L455.46394971 508.23169412 156.03933259 807.71287052a39.13899415 39.13899415 0 0 0 0 55.08869986l1.64021795 1.6967772a39.13899415 39.13899415 0 0 0 55.08869988 0l299.42461714-299.48117638 299.36805793 299.42461714a39.13899415 39.13899415 0 0 0 55.08869984 0l1.6967772-1.64021796a39.13899415 39.13899415 0 0 0 0-55.08869987L568.86522614 508.17513487z" p-id="2684"></path></svg>
                 </div>
-                <div className="wk-imagedialog-content-title">发送{fileType === 'image' ? '图片' : '文件'}</div>
+                <div className="wk-imagedialog-content-title">发送{fileType === 'image' ? '图片' : (fileType === 'video' ? '视频' : '文件')}</div>
                 <div className="wk-imagedialog-content-body">
                     {
                         fileType === 'image' ? (
                             <div className="wk-imagedialog-content-preview">
                                 <img alt="" className="wk-imagedialog-content-previewImg" src={previewUrl} onLoad={onLoad} />
+                            </div>
+                        ) : fileType === 'video' ? (
+                            <div className="wk-imagedialog-content-preview">
+                                <img alt="" className="wk-imagedialog-content-previewImg" src={previewUrl} />
                             </div>
                         ) : (
                             <div className="wk-imagedialog-content-preview">

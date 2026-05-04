@@ -38,6 +38,7 @@ export * from './Utils/NotificationUtil'
 
 export { default as MessageBase } from "./Messages/Base"
 export  * from "./Messages/Image"
+export * from "./Messages/Video"
 export * from "./Messages/Base"
 
 export * from "./Messages/MessageCell"

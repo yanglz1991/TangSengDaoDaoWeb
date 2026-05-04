@@ -228,14 +228,22 @@ export default class ContactsList extends Component<any, ContactsState> {
                         WKApp.shared.baseContext.showConversationSelect((channels: Channel[]) => {
                             const { selectedItem } = this.state
                             if (channels && channels.length > 0) {
-                                for (const channel of channels) {
+                                // 群员禁止在群里分享名片（如需放开请删除下面 filter 并直接使用 channels）
+                                const personChannels = channels.filter(c => c.channelType === ChannelTypePerson)
+                                const skippedGroup = personChannels.length < channels.length
+                                for (const channel of personChannels) {
                                     const card = new Card()
                                     card.uid = selectedItem?.uid || ""
                                     card.name = selectedItem?.name || ""
                                     card.vercode = selectedItem?.vercode||""
                                     WKSDK.shared().chatManager.send(card, channel)
                                 }
-                                Toast.success("分享成功！")
+                                if (personChannels.length > 0) {
+                                    Toast.success("分享成功！")
+                                }
+                                if (skippedGroup) {
+                                    Toast.warning("群聊不支持分享名片，已跳过")
+                                }
                             }
                         }, "分享名片")
                     }

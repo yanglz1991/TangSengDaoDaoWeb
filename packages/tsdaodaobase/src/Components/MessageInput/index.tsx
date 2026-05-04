@@ -235,11 +235,12 @@ export default class MessageInput extends Component<MessageInputProps, MessageIn
                 item.display = member.name
                 return item
             });
-            selectedItems.splice(0, 0, {
-                icon: require('./mention.png'),
-                id: -1,
-                display: '所有人'
-            });
+            // 取消群成员@所有人（如需放开请取消下面注释）
+            // selectedItems.splice(0, 0, {
+            //     icon: require('./mention.png'),
+            //     id: -1,
+            //     display: '所有人'
+            // });
         }
         return (
             <div className="wk-messageinput-box">

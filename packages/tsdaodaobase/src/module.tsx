@@ -352,6 +352,11 @@ export default class BaseModule implements IModule {
       } else if (cmdContent.cmd === "userAvatarUpdate") { // 用户头像更新
         WKApp.shared.changeChannelAvatarTag(new Channel(param.uid, ChannelTypePerson));
         WKApp.dataSource.notifyContactsChange();
+        // 主动触发该 PERSON 频道的 channelInfoListener，让正在显示此用户头像/昵称
+        // 的列表、群聊、设置等界面自动刷新（对应修复：用户换头像/名字后别人列表不刷新）
+        WKSDK.shared().channelManager.fetchChannelInfo(
+          new Channel(param.uid, ChannelTypePerson)
+        );
       }
     });
 
@@ -627,6 +632,10 @@ export default class BaseModule implements IModule {
         const fromSubscriberOfUser = data.fromSubscriberOfUser;
 
         if (data.isSelf) {
+          return;
+        }
+        // 从群成员列表进入个人详情页不显示「设置备注」入口（如需放开请删除下面 if 语句）
+        if (data.fromChannel && data.fromChannel.channelType !== ChannelTypePerson) {
           return;
         }
 

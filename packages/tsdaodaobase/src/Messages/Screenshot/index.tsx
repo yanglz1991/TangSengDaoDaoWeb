@@ -35,15 +35,15 @@ export class ScreenshotContent extends MessageContent {
     }
 
     get conversationDigest() {
-        return this.tip
+        // 已禁用「在聊天中截屏了」通知，会话列表里不再展示该 digest
+        return ""
     }
 
 }
 
 export class ScreenshotCell extends MessageCell {
     render() {
-        const { message } = this.props
-        let content = message.content as ScreenshotContent
-        return <div className="wk-message-system">{content.tip}</div>
+        // 已禁用「在聊天中截屏了」通知，消息列表里不再渲染此类消息
+        return <></>
     }
 }

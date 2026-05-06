@@ -3,9 +3,10 @@ import { MentionsInput, Mention, SuggestionDataItem } from 'react-mentions'
 import ConversationContext from "../Conversation/context";
 import clazz from 'classnames';
 import './mention.css'
-import { Channel, ChannelTypePerson, Subscriber } from "wukongimjssdk";
+import { Channel, ChannelTypePerson, Subscriber, WKSDK } from "wukongimjssdk";
 import hotkeys from 'hotkeys-js';
 import WKApp from "../../App";
+import { GroupRole } from "../../Service/Const";
 import "./index.css"
 import InputStyle from "./defaultStyle";
 import {IconSend} from '@douyinfe/semi-icons';
@@ -172,7 +173,7 @@ export default class MessageInput extends Component<MessageInputProps, MessageIn
                         let name = mentionStr.trim().replace('@', '')
                         let member = mentionCache[name];
                         if (member) {
-                            if (member.uid === -1) { // -1表示@所有人
+                            if (String(member.uid) === "-1") { // -1表示@所有人
                                 all = true;
                             } else {
                                 mentionUIDS.push(member.uid)
@@ -223,7 +224,7 @@ export default class MessageInput extends Component<MessageInputProps, MessageIn
     }
 
     render() {
-        const { members, onInputRef, topView, toolbar } = this.props
+        const { members, context, onInputRef, topView, toolbar } = this.props
         const { value, mentionCache } = this.state
         const hasValue = value && value.length > 0
         let selectedItems = new Array<MemberSuggestionDataItem>();
@@ -235,12 +236,18 @@ export default class MessageInput extends Component<MessageInputProps, MessageIn
                 item.display = member.name
                 return item
             });
-            // 取消群成员@所有人（如需放开请取消下面注释）
-            // selectedItems.splice(0, 0, {
-            //     icon: require('./mention.png'),
-            //     id: -1,
-            //     display: '所有人'
-            // });
+            // 群聊中仅群主 / 管理员可 @所有人
+            const channel = context?.channel()
+            if (channel && channel.channelType !== ChannelTypePerson) {
+                const subscribeOfMe = WKSDK.shared().channelManager.getSubscribeOfMe(channel)
+                if (subscribeOfMe && (subscribeOfMe.role === GroupRole.owner || subscribeOfMe.role === GroupRole.manager)) {
+                    const allItem = new MemberSuggestionDataItem()
+                    allItem.id = -1
+                    allItem.display = '所有人'
+                    allItem.icon = require('./mention.png')
+                    selectedItems.splice(0, 0, allItem)
+                }
+            }
         }
         return (
             <div className="wk-messageinput-box">

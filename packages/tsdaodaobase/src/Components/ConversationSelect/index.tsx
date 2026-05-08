@@ -1,4 +1,4 @@
-import { WKSDK,Channel, ChannelInfo } from "wukongimjssdk";
+import { WKSDK,Channel, ChannelInfo, ChannelTypeGroup } from "wukongimjssdk";
 import { Component } from "react";
 import Checkbox from "../Checkbox";
 import { animateScroll } from 'react-scroll';
@@ -9,6 +9,8 @@ import "./index.css"
 import React from "react";
 import WKAvatar from "../WKAvatar";
 
+type ConversationSelectTab = 'recent' | 'group' | 'friend';
+
 interface ConversationSelectProps {
     onFinished?: (channels: Channel[]) => void
     title?:string
@@ -16,9 +18,11 @@ interface ConversationSelectProps {
 
 interface ConversationSelectState {
     conversationWraps: ConversationWrap[]
+    groups: ChannelInfo[]
     friends: ChannelInfo[]
-    selectChannels: Channel[] // 被选中的频道
+    selectChannels: Channel[] // 被选中的频道(跨 Tab 累积)
     keyword?:string
+    activeTab: ConversationSelectTab
 }
 
 
@@ -28,8 +32,10 @@ export default class ConversationSelect extends Component<ConversationSelectProp
         super(porps);
         this.state = {
             conversationWraps: [],
+            groups: [],
             selectChannels: [],
             friends: [],
+            activeTab: 'recent',
         }
     }
 
@@ -56,6 +62,46 @@ export default class ConversationSelect extends Component<ConversationSelectProp
             friends: friends!,
         })
     }
+
+    async requestGroups() {
+        // 后端 /group/my 只返回 save=1 的群,无「我加入的所有群」接口。
+        // 因此融合本地会话中的群组(用户最近聊过的) + 接口返回的群,以 channelID 去重。
+        const merged: ChannelInfo[] = []
+        const seen = new Set<string>()
+
+        // 1. 先收集本地会话里的群组(已按最近活跃排序)
+        const conversations = WKSDK.shared().conversationManager.conversations || []
+        for (const conv of conversations) {
+            if (conv.channel.channelType !== ChannelTypeGroup) continue
+            if (seen.has(conv.channel.channelID)) continue
+            let info = WKSDK.shared().channelManager.getChannelInfo(conv.channel)
+            if (!info) {
+                // 占位:用 channelID 临时命名,异步拉取
+                info = new ChannelInfo()
+                info.channel = conv.channel
+                info.title = conv.channel.channelID
+                WKSDK.shared().channelManager.fetchChannelInfo(conv.channel)
+            }
+            seen.add(conv.channel.channelID)
+            merged.push(info)
+        }
+
+        // 2. 再拉接口里的"已保存"群,补充未在会话中的
+        try {
+            const remoteGroups = await WKApp.dataSource.channelDataSource.groupSaveList()
+            if (remoteGroups) {
+                for (const g of remoteGroups) {
+                    if (seen.has(g.channel.channelID)) continue
+                    seen.add(g.channel.channelID)
+                    merged.push(g)
+                }
+            }
+        } catch (e) {
+            // 接口失败时仅展示本地会话中的群
+        }
+
+        this.setState({ groups: merged })
+    }
     // 排序最近会话列表
     sortConversations(conversations: Array<ConversationWrap>) {
         let newConversations = conversations;
@@ -79,6 +125,7 @@ export default class ConversationSelect extends Component<ConversationSelectProp
     componentDidMount() {
         this.requestConversation()
         this.requestContacts()
+        this.requestGroups()
     }
 
     select(channel: Channel) {
@@ -129,18 +176,126 @@ export default class ConversationSelect extends Component<ConversationSelectProp
             keyword: value,
         })
     }
+
+    setActiveTab(tab: ConversationSelectTab) {
+        this.setState({ activeTab: tab })
+    }
+
+    // 渲染单个选项行(频道+复选框+头像+名称)
+    renderItem(channel: Channel, displayName: string, key: string) {
+        return (
+            <div key={key} className="wk-conversationselect-content" onClick={() => {
+                this.select(channel)
+            }}>
+                <div>
+                    <Checkbox checked={this.hasSelected(channel)} onCheck={() => {
+                        this.select(channel)
+                    }} />
+                </div>
+                <div className="wk-conversationselect-content-box-data">
+                    <div>
+                        <WKAvatar channel={channel} style={{ width: "48px", height: "48px", borderRadius: "48px" }} />
+                    </div>
+                    <div className="wk-conversationselect-content-box-name">
+                        {displayName}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    renderEmpty(text: string) {
+        return (
+            <div className="wk-conversationselect-empty">{text}</div>
+        )
+    }
+
+    renderRecentTab() {
+        const { conversationWraps, keyword } = this.state
+        const sortedConversations = this.sortConversations(conversationWraps)
+        const list = sortedConversations.filter((v) => {
+            if (!keyword || keyword === "") return true
+            return (v.channelInfo?.title || "").indexOf(keyword) !== -1
+        })
+        if (list.length === 0) return this.renderEmpty("暂无最近聊天")
+        return list.map((conversationWrap: ConversationWrap) => {
+            const name = conversationWrap.channelInfo?.orgData?.displayName || conversationWrap.channelInfo?.title || ""
+            return this.renderItem(
+                conversationWrap.channel,
+                name,
+                `${conversationWrap.channel.channelID}-${conversationWrap.channel.channelType}-recent`
+            )
+        })
+    }
+
+    renderGroupTab() {
+        const { groups, keyword } = this.state
+        const list = groups.filter((v) => {
+            if (!keyword || keyword === "") return true
+            return (v.orgData?.displayName || v.title || "").indexOf(keyword) !== -1
+        })
+        if (list.length === 0) return this.renderEmpty("暂无群组")
+        return list.map((channelInfo: ChannelInfo) => {
+            const name = channelInfo.orgData?.displayName || channelInfo.title || ""
+            return this.renderItem(
+                channelInfo.channel,
+                name,
+                `${channelInfo.channel.channelID}-group`
+            )
+        })
+    }
+
+    renderFriendTab() {
+        const { friends, keyword } = this.state
+        const list = friends.filter((v) => {
+            if (!keyword || keyword === "") return true
+            return (v.orgData?.displayName || v.title || "").indexOf(keyword) !== -1
+        })
+        if (list.length === 0) return this.renderEmpty("暂无好友")
+        return list.map((channelInfo: ChannelInfo) => {
+            const name = channelInfo.orgData?.displayName || channelInfo.title || ""
+            return this.renderItem(
+                channelInfo.channel,
+                name,
+                `${channelInfo.channel.channelID}-friend`
+            )
+        })
+    }
+
+    renderTabBar() {
+        const { activeTab } = this.state
+        const tabs: Array<{ key: ConversationSelectTab, label: string }> = [
+            { key: 'recent', label: '最近聊天' },
+            { key: 'group', label: '群组' },
+            { key: 'friend', label: '好友' },
+        ]
+        return (
+            <div className="wk-conversationselect-tabbar">
+                {tabs.map(t => (
+                    <div
+                        key={t.key}
+                        className={`wk-conversationselect-tab${activeTab === t.key ? ' active' : ''}`}
+                        onClick={() => this.setActiveTab(t.key)}
+                    >
+                        <span>{t.label}</span>
+                        <div className="wk-conversationselect-tab-indicator" />
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
     render() {
-        const { conversationWraps, selectChannels, friends,keyword } = this.state
-        const { onFinished,title } = this.props
-        let sortedConversations = this.sortConversations(conversationWraps);
+        const { selectChannels, activeTab } = this.state
+        const { onFinished, title } = this.props
         return <div className="wk-conversationselect">
             <div>
-                <div className="wk-conversationselect-content-title">{title||"转发"}</div>
+                <div className="wk-conversationselect-content-title">{title || "转发"}</div>
                 <div id="conversationSelectSearchBox" className="wk-conversationselect-content-searchBox">
                     <div className="wk-conversationselect-content-selectedChannel">
                         {
                             selectChannels.map((channel: Channel) => {
-                                return <div key={`${channel.channelID}-selected`} className="wk-conversationselect-content-selectedAvatar" onClick={() => {
+                                return <div key={`${channel.channelID}-${channel.channelType}-selected`} className="wk-conversationselect-content-selectedAvatar" onClick={() => {
                                     this.select(channel)
                                 }}>
                                     <WKAvatar channel={channel} style={{ width: "48px", height: "48px", borderRadius: "48px" }}></WKAvatar>
@@ -149,97 +304,29 @@ export default class ConversationSelect extends Component<ConversationSelectProp
                         }
                         <div className="wk-conversationselect-content-searchContent">
                             <div className="wk-conversationselect-content-searchIcon">
-                                <IconSearchStroked style={{ color: '#bbbfc4', fontSize: '20px' }}/>
+                                <IconSearchStroked style={{ color: '#bbbfc4', fontSize: '20px' }} />
                             </div>
                             <div className="wk-conversationselect-content-searchInput">
-                                <input placeholder="搜索" type="text" style={{ fontSize: '17px' }} onChange={(v)=>{
+                                <input placeholder="搜索" type="text" style={{ fontSize: '17px' }} onChange={(v) => {
                                     this.onSelect(v.target.value)
-                                }}/>
+                                }} />
                             </div>
                         </div>
                     </div>
 
                 </div>
+                {this.renderTabBar()}
                 <div className="wk-conversationselect-content-box">
-                    <div className="wk-conversationselect-content-header">
-                        最近聊天
-                    </div>
                     <div className="wk-conversationselect-content-list">
-                        {
-                            sortedConversations.filter((v)=>{
-                                if(!keyword || keyword === "") {
-                                    return true
-                                }
-                               return v.channelInfo?.title.indexOf(keyword)!=-1
-                            }).map((conversationWrap: ConversationWrap) => {
-
-                                return (
-                                    <div key={`${conversationWrap.channel.channelID}-conversation`} className="wk-conversationselect-content" onClick={() => {
-                                        this.select(conversationWrap.channel)
-                                    }}>
-                                        <div>
-                                            <Checkbox checked={this.hasSelected(conversationWrap.channel)} onCheck={() => {
-                                                this.select(conversationWrap.channel)
-                                            }} />
-                                        </div>
-                                        <div className="wk-conversationselect-content-box-data">
-                                            <div>
-                                                <WKAvatar channel={conversationWrap.channel} style={{ width: "48px", height: "48px", borderRadius: "48px" }} />
-                                            </div>
-                                            <div className="wk-conversationselect-content-box-name">
-                                                {
-                                                    conversationWrap.channelInfo?.orgData.displayName
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        }
-
-                    </div>
-                    <div className="wk-conversationselect-content-header">
-                        好友
-                    </div>
-                    <div className="wk-conversationselect-content-list">
-                        {
-                            friends.filter((v)=>{
-                                if(!keyword || keyword === "") {
-                                    return true
-                                }
-                               return  v.orgData.displayName.indexOf(keyword) !==-1
-                            }).map((channelInfo: ChannelInfo) => {
-
-                                return (
-                                    <div key={channelInfo.channel.channelID} className="wk-conversationselect-content" onClick={() => {
-                                        this.select(channelInfo.channel)
-                                    }}>
-                                        <div >
-                                            <Checkbox checked={this.hasSelected(channelInfo.channel)} onCheck={() => {
-                                                this.select(channelInfo.channel)
-                                            }} />
-                                        </div>
-                                        <div className="wk-conversationselect-content-box-data">
-                                            <div >
-                                                <WKAvatar channel={channelInfo.channel} style={{ width: "48px", height: "48px", borderRadius: "48px" }} />
-                                            </div>
-                                            <div className="wk-conversationselect-content-box-name">
-                                                {
-                                                    channelInfo?.orgData.displayName
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        }
-
+                        {activeTab === 'recent' && this.renderRecentTab()}
+                        {activeTab === 'group' && this.renderGroupTab()}
+                        {activeTab === 'friend' && this.renderFriendTab()}
                     </div>
                 </div>
             </div>
             <div className="wk-conversationselect-footer">
                 <div className="wk-conversationselect-okBtn" onClick={() => {
-                    if(onFinished) {
+                    if (onFinished) {
                         onFinished(selectChannels)
                     }
                 }}>

@@ -127,3 +127,52 @@
     justify-content: center;
     align-items: center;
 }
+
+/* Tab 切换栏 */
+.wk-conversationselect-tabbar {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--wk-color-divider, #ebedf0);
+    padding: 0 16px;
+}
+
+.wk-conversationselect-tab {
+    flex: 1;
+    text-align: center;
+    line-height: 40px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #86909c;
+    position: relative;
+    user-select: none;
+}
+
+.wk-conversationselect-tab:hover {
+    color: #1f2329;
+}
+
+.wk-conversationselect-tab.active {
+    color: var(--wk-color-theme);
+    font-weight: 600;
+}
+
+.wk-conversationselect-tab-indicator {
+    height: 2px;
+    width: 24px;
+    margin: 0 auto;
+    background-color: transparent;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+.wk-conversationselect-tab.active .wk-conversationselect-tab-indicator {
+    background-color: var(--wk-color-theme);
+}
+
+/* 空态 */
+.wk-conversationselect-empty {
+    text-align: center;
+    color: #86909c;
+    font-size: 13px;
+    padding: 40px 0;
+}

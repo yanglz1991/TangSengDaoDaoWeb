@@ -153,6 +153,63 @@ export default class ConversationSelect extends Component<ConversationSelectProp
         })
     }
 
+    // 取得当前 Tab 经搜索过滤后的可选频道列表(用于全选/取消全选)
+    getCurrentVisibleChannels(): Channel[] {
+        const { activeTab, conversationWraps, groups, friends, keyword } = this.state
+        const kw = keyword || ""
+        if (activeTab === 'recent') {
+            return this.sortConversations(conversationWraps)
+                .filter(v => kw === "" || (v.channelInfo?.title || "").indexOf(kw) !== -1)
+                .map(v => v.channel)
+        }
+        const list = activeTab === 'group' ? groups : friends
+        return list
+            .filter(v => kw === "" || (v.orgData?.displayName || v.title || "").indexOf(kw) !== -1)
+            .map(v => v.channel)
+    }
+
+    // 当前 Tab 是否全部已选
+    isCurrentTabAllSelected(): boolean {
+        const list = this.getCurrentVisibleChannels()
+        if (list.length === 0) return false
+        for (const ch of list) {
+            if (!this.hasSelected(ch)) return false
+        }
+        return true
+    }
+
+    // 当前 Tab 已选数量
+    currentTabSelectedCount(): number {
+        const list = this.getCurrentVisibleChannels()
+        let n = 0
+        for (const ch of list) {
+            if (this.hasSelected(ch)) n++
+        }
+        return n
+    }
+
+    // 全选/取消全选当前 Tab
+    toggleSelectAllCurrentTab() {
+        const visible = this.getCurrentVisibleChannels()
+        if (visible.length === 0) return
+        const allSelected = this.isCurrentTabAllSelected()
+        const { selectChannels } = this.state
+        if (allSelected) {
+            // 移除当前可见列表里的所有 channel
+            const remaining = selectChannels.filter(sc => !visible.some(v => v.isEqual(sc)))
+            this.setState({ selectChannels: remaining }, () => this.scrollToBottom())
+        } else {
+            // 把当前可见列表里未选的 channel 追加(去重)
+            const next = [...selectChannels]
+            for (const ch of visible) {
+                if (!next.some(sc => sc.isEqual(ch))) {
+                    next.push(ch)
+                }
+            }
+            this.setState({ selectChannels: next }, () => this.scrollToBottom())
+        }
+    }
+
     hasSelected(channel: Channel) {
         const { selectChannels } = this.state
         if (selectChannels && selectChannels.length > 0) {
@@ -262,6 +319,24 @@ export default class ConversationSelect extends Component<ConversationSelectProp
         })
     }
 
+    // 渲染当前 Tab 下的全选工具行
+    renderSelectAllBar() {
+        const visible = this.getCurrentVisibleChannels()
+        if (visible.length === 0) return null
+        const allSelected = this.isCurrentTabAllSelected()
+        const selectedCount = this.currentTabSelectedCount()
+        return (
+            <div className="wk-conversationselect-selectall">
+                <div className="wk-conversationselect-selectall-btn" onClick={() => this.toggleSelectAllCurrentTab()}>
+                    {allSelected ? "取消全选" : "全选"}
+                </div>
+                <div className="wk-conversationselect-selectall-count">
+                    已选 {selectedCount} / {visible.length}
+                </div>
+            </div>
+        )
+    }
+
     renderTabBar() {
         const { activeTab } = this.state
         const tabs: Array<{ key: ConversationSelectTab, label: string }> = [
@@ -289,7 +364,7 @@ export default class ConversationSelect extends Component<ConversationSelectProp
         const { selectChannels, activeTab } = this.state
         const { onFinished, title } = this.props
         return <div className="wk-conversationselect">
-            <div>
+            <div className="wk-conversationselect-body">
                 <div className="wk-conversationselect-content-title">{title || "转发"}</div>
                 <div id="conversationSelectSearchBox" className="wk-conversationselect-content-searchBox">
                     <div className="wk-conversationselect-content-selectedChannel">
@@ -316,6 +391,7 @@ export default class ConversationSelect extends Component<ConversationSelectProp
 
                 </div>
                 {this.renderTabBar()}
+                {this.renderSelectAllBar()}
                 <div className="wk-conversationselect-content-box">
                     <div className="wk-conversationselect-content-list">
                         {activeTab === 'recent' && this.renderRecentTab()}

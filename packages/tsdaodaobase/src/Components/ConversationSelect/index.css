@@ -3,6 +3,16 @@
 
 .wk-conversationselect {
     max-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 上部内容区（title / search / tab / selectAll / list），占据剩余高度，防止底部 footer 被顶出 */
+.wk-conversationselect-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -78,7 +88,8 @@
 
 .wk-conversationselect-content-box {
     padding: 0px 20px;
-    max-height: 400px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: auto;
 }
 
@@ -114,6 +125,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    flex: 0 0 auto;
 }
 
 .wk-conversationselect-okBtn {
@@ -167,6 +179,33 @@
 
 .wk-conversationselect-tab.active .wk-conversationselect-tab-indicator {
     background-color: var(--wk-color-theme);
+}
+
+/* 全选工具行 */
+.wk-conversationselect-selectall {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--wk-color-divider, #ebedf0);
+}
+
+.wk-conversationselect-selectall-btn {
+    color: var(--wk-color-theme);
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.wk-conversationselect-selectall-btn:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.wk-conversationselect-selectall-count {
+    color: #86909c;
+    font-size: 12px;
 }
 
 /* 空态 */

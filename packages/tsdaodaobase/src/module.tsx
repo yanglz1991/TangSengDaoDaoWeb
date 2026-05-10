@@ -222,6 +222,30 @@ export default class BaseModule implements IModule {
       if (cmdContent.cmd === "appconfigUpdate") {
         // 全局 app 配置变更（管理后台禁言开关等）
         WKApp.remoteConfig.requestConfig().catch(() => {});
+      } else if (cmdContent.cmd === "forceLogout") {
+        // 管理员封禁触发的强制下线：弹窗显示原因，确认后退出登录
+        // match_type: user/device/ip
+        //   - device: 仅当本机 deviceId 一致才退出
+        //   - 其他: 直接退出（服务端已筛选目标 uid）
+        const matchType = (param && param.match_type) || "user";
+        const matchValue = (param && param.match_value) || "";
+        const reason = (param && param.reason) || "您的账号已被管理员强制下线";
+        if (matchType === "device" && matchValue && WKApp.shared.deviceId !== matchValue) {
+          // 不是本机 device，忽略
+          return;
+        }
+        // 防止已经触发过的重复弹窗
+        if ((window as any).__force_logout_triggered__) return;
+        (window as any).__force_logout_triggered__ = true;
+        try {
+          // eslint-disable-next-line no-alert
+          window.alert(reason);
+        } catch (_) {}
+        try {
+          WKApp.shared.logout();
+        } catch (_) {
+          window.location.reload();
+        }
       } else if (cmdContent.cmd === "channelUpdate") {
         // 频道信息更新
         WKSDK.shared().channelManager.fetchChannelInfo(

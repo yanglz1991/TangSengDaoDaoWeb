@@ -382,7 +382,46 @@ export default class WKApp extends ProviderListener {
 
     WKApp.remoteConfig.startRequestConfig();
 
+    // 已登录态下，启动 + 标签页可见时兜底检查一次封禁状态。
+    // 防止 forceLogout CMD 因浏览器关闭 / 后台被冻结未送达，导致客户端继续以已登录状态运行
+    if (WKApp.loginInfo.isLogined()) {
+      // 启动延迟 2s，等待 IM 连接和路由就绪，避免在登录跳转过程中弹窗
+      setTimeout(() => this.checkBanStatusAndHandle(), 2000);
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && WKApp.loginInfo.isLogined()) {
+        this.checkBanStatusAndHandle();
+      }
+    });
+  }
 
+  /**
+   * 主动检查当前登录态是否被管理后台封禁（uid / IP / device 任意维度命中即弹窗并退出）。
+   * 与 forceLogout CMD 处理共用 window.__force_logout_triggered__ 去重标志，避免双弹窗。
+   */
+  async checkBanStatusAndHandle() {
+    if (!WKApp.loginInfo.isLogined()) return;
+    if ((window as any).__force_logout_triggered__) return;
+    try {
+      const result: any = await WKApp.apiClient.get("user/checkstatus", {
+        param: { device_id: WKApp.shared.deviceId },
+      });
+      if (!result || !result.banned) return;
+      if ((window as any).__force_logout_triggered__) return;
+      (window as any).__force_logout_triggered__ = true;
+      const reason: string = result.reason || "您的账号已被管理员封禁";
+      try {
+        // eslint-disable-next-line no-alert
+        window.alert(reason);
+      } catch (_) { }
+      try {
+        WKApp.shared.logout();
+      } catch (_) {
+        window.location.reload();
+      }
+    } catch (_) {
+      // 失败静默：下一次切回前台还会再试，避免误打扰用户
+    }
   }
 
   getDeviceIdFromStorage() {

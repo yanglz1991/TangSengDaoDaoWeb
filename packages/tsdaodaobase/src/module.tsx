@@ -219,7 +219,10 @@ export default class BaseModule implements IModule {
       const cmdContent = message.content as CMDContent;
       const param = cmdContent.param;
 
-      if (cmdContent.cmd === "channelUpdate") {
+      if (cmdContent.cmd === "appconfigUpdate") {
+        // 全局 app 配置变更（管理后台禁言开关等）
+        WKApp.remoteConfig.requestConfig().catch(() => {});
+      } else if (cmdContent.cmd === "channelUpdate") {
         // 频道信息更新
         WKSDK.shared().channelManager.fetchChannelInfo(
           new Channel(param.channel_id, param.channel_type)

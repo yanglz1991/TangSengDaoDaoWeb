@@ -24,6 +24,11 @@ export class ChannelDataSource implements IChannelDataSource {
         return WKApp.apiClient.put(`groups/${channel.channelID}/members/${subscriberUID}`, attr)
     }
     createChannel(uids: string[]): Promise<any> {
+        // 全局群聊禁言：禁止创建群
+        const rc = WKApp.remoteConfig
+        if (rc && rc.disableGroupMessageOn) {
+            return Promise.reject({ msg: rc.muteTextOfGroup || "群聊禁言中" })
+        }
         return WKApp.apiClient.post(`group/create`, { members: uids });
     }
     async groupSaveList(): Promise<ChannelInfo[]> {
@@ -66,6 +71,11 @@ export class ChannelDataSource implements IChannelDataSource {
         })
     }
     addSubscribers(channel: Channel, uids: string[]): Promise<void> {
+        // 全局群聊禁言：禁止加群成员
+        const rc = WKApp.remoteConfig
+        if (rc && rc.disableGroupMessageOn) {
+            return Promise.reject({ msg: rc.muteTextOfGroup || "群聊禁言中" })
+        }
         return WKApp.apiClient.post(`groups/${channel.channelID}/members`, {
             members: uids,
         })
@@ -208,6 +218,11 @@ export class CommonDataSource implements ICommonDataSource {
     }
 
     friendApply(req:{uid:string,remark:string,vercode:string}):Promise<void> {
+        // 全局群聊禁言：禁止添加好友
+        const rc = WKApp.remoteConfig
+        if (rc && rc.disableGroupMessageOn) {
+            return Promise.reject({ msg: rc.muteTextOfGroup || "群聊禁言中" })
+        }
         return WKApp.apiClient.post(`friend/apply`,{to_uid:req.uid,remark:req.remark,vercode:req.vercode},)
     }
 
@@ -267,6 +282,7 @@ export class CommonDataSource implements ICommonDataSource {
                 addr =  resp.ws_addr
             }
             return [addr]
+            // return ['ws://127.0.0.1:5200']
         });
     }
 

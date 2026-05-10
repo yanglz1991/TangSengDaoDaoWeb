@@ -42,11 +42,30 @@ export class Conversation extends Component<ConversationProps> implements Conver
     }
 
 
+    // 全局禁言：根据频道类型返回提示文案，未禁言返回 undefined
+    private channelMuteTip(channel: Channel): string | undefined {
+        const rc = WKApp.remoteConfig
+        if (!rc) return undefined
+        if (channel.channelType === ChannelTypeGroup && rc.disableGroupMessageOn) {
+            return rc.muteTextOfGroup || "群聊禁言中"
+        }
+        if (channel.channelType === ChannelTypePerson && rc.disablePrivateMessageOn) {
+            return rc.muteTextOfPrivate || "私聊禁言中"
+        }
+        return undefined
+    }
+
     async sendMessage(content: MessageContent, channel?: Channel): Promise<Message> {
         // const { channel } = this.props
         let c = channel
         if (!c) {
             c = this.props.channel
+        }
+        // 全局禁言拦截（管理后台「禁言设置」）
+        const muteTip = this.channelMuteTip(c)
+        if (muteTip) {
+            Toast.error(muteTip)
+            return Promise.reject({ msg: muteTip })
         }
         const message = await this.vm.sendMessage(content, c)
         return message
@@ -182,6 +201,12 @@ export class Conversation extends Component<ConversationProps> implements Conver
         WKApp.shared.openChannel = channel
         if (this.vm.hasDraft()) {
             this.insertText(this.vm.draft())
+        }
+
+        // 全局禁言：进入聊天页时提示一次
+        const muteTip = this.channelMuteTip(channel)
+        if (muteTip) {
+            Toast.info(muteTip)
         }
 
         window.onbeforeunload = () => { // 浏览器关闭

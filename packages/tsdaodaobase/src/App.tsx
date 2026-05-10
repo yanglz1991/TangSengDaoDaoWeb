@@ -73,6 +73,18 @@ export class WKRemoteConfig {
   private retryCount: number = 0;
   private maxRetries: number = 5; // 最大重试次数
 
+  // 全局禁言（管理后台「禁言设置」）
+  disableGroupMessageOn: boolean = false; // 群聊禁言开关（含群发消息/建群/加群成员/加好友）
+  disablePrivateMessageOn: boolean = false; // 私聊禁言开关
+  muteTextOfGroup: string = ""; // 群聊禁言客户端展示文案
+  muteTextOfPrivate: string = ""; // 私聊禁言客户端展示文案
+
+  // 周期性同步远程配置（兜底：当 IM CMD 因网络抖动丢失时仍能恢复）
+  // 实时同步主路径：管理后台保存配置后，Server 会通过 appconfigUpdate CMD 推送给所有用户
+  private pollIntervalMs: number = 5 * 60 * 1000; // 5 分钟兜底拉一次
+  private pollTimer?: any;
+  private visibilityListenerBound: boolean = false;
+
   async startRequestConfig() {
     await this.requestConfig();
 
@@ -83,13 +95,46 @@ export class WKRemoteConfig {
       setTimeout(() => {
         this.startRequestConfig();
       }, delay);
+      return;
     }
+
+    // 首次成功后启动周期同步与可见性回调
+    if (this.requestSuccess) {
+      this.startPolling();
+      this.bindVisibilityListenerIfNeed();
+    }
+  }
+
+  // 周期同步：每 pollIntervalMs 调一次 requestConfig，覆盖管理后台配置变更
+  private startPolling() {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => {
+      // 页面隐藏时不发请求，避免无意义流量；可见时再轮询
+      if (typeof document !== "undefined" && document.hidden) return;
+      this.requestConfig().catch(() => {});
+    }, this.pollIntervalMs);
+  }
+
+  // 页面从隐藏切回可见时立即拉一次配置
+  private bindVisibilityListenerIfNeed() {
+    if (this.visibilityListenerBound) return;
+    if (typeof document === "undefined") return;
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        this.requestConfig().catch(() => {});
+      }
+    });
+    this.visibilityListenerBound = true;
   }
 
   requestConfig() {
     return WKApp.apiClient.get("common/appconfig").then((result) => {
       this.requestSuccess = true;
       this.revokeSecond = result["revoke_second"];
+      this.disableGroupMessageOn = result["disable_group_message_on"] === 1;
+      this.disablePrivateMessageOn = result["disable_private_message_on"] === 1;
+      this.muteTextOfGroup = result["mute_text_of_group"] || "";
+      this.muteTextOfPrivate = result["mute_text_of_private"] || "";
     });
   }
 }

@@ -33,6 +33,10 @@ interface GroupApprovalListState {
 }
 
 export default class GroupApprovalList extends Component<GroupApprovalListProps, GroupApprovalListState> {
+    // 跟踪正在打开的审批 H5 窗口的轮询定时器，组件卸载时清理
+    private pendingCloseTimers: number[] = [];
+    private isUnmounted = false;
+
     constructor(props: GroupApprovalListProps) {
         super(props);
         this.state = {
@@ -43,21 +47,37 @@ export default class GroupApprovalList extends Component<GroupApprovalListProps,
 
     componentDidMount() {
         this.fetchInvites();
+        // 兜底：用户从其它途径完成审批后切回本 tab 时刷新一次
+        window.addEventListener("focus", this.handleWindowFocus);
     }
+
+    componentWillUnmount() {
+        this.isUnmounted = true;
+        window.removeEventListener("focus", this.handleWindowFocus);
+        this.pendingCloseTimers.forEach((t) => window.clearInterval(t));
+        this.pendingCloseTimers = [];
+    }
+
+    handleWindowFocus = () => {
+        // 只在还存在未关闭的审批窗口轮询时刷新（说明用户刚操作完审批回到本页）
+        if (this.pendingCloseTimers.length > 0) {
+            this.fetchInvites();
+        }
+    };
 
     fetchInvites = async () => {
         const { routeContext } = this.props;
         const channel = routeContext.routeData().channel;
         if (!channel) {
-            this.setState({ loading: false });
+            if (!this.isUnmounted) this.setState({ loading: false });
             return;
         }
         try {
             const resp = await WKApp.apiClient.get(`groups/${channel.channelID}/member/invites`);
             const list: InviteRecord[] = Array.isArray(resp) ? resp : [];
-            this.setState({ loading: false, invites: list });
+            if (!this.isUnmounted) this.setState({ loading: false, invites: list });
         } catch (err: any) {
-            this.setState({ loading: false });
+            if (!this.isUnmounted) this.setState({ loading: false });
             Toast.error(err?.msg || "加载失败");
         }
     };
@@ -72,7 +92,18 @@ export default class GroupApprovalList extends Component<GroupApprovalListProps,
             });
             const url = resp?.url;
             if (url) {
-                window.open(url, "_blank");
+                const w = window.open(url, "_blank");
+                if (w) {
+                    // 轮询审批 H5 窗口的关闭状态，关闭后刷新列表
+                    const timer = window.setInterval(() => {
+                        if (w.closed) {
+                            window.clearInterval(timer);
+                            this.pendingCloseTimers = this.pendingCloseTimers.filter((t) => t !== timer);
+                            if (!this.isUnmounted) this.fetchInvites();
+                        }
+                    }, 800);
+                    this.pendingCloseTimers.push(timer);
+                }
             }
         } catch (err: any) {
             Toast.error(err?.msg || "操作失败");

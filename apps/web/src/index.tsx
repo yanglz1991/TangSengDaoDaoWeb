@@ -10,7 +10,8 @@ import { ContactsModule } from '@tsdaodao/contacts';
 import { GroupManagerModule } from '@tsdaodao/groupmanager';
 import {FileModule} from '@tsdaodao/file';
 
-const apiURL = "https://qx.qhfhasina.com/api/v1/"
+const apiURL = "http://localhost:8090/v1/"
+// const apiURL = "https://qx.qhfhasina.com/api/v1/"
 
 if((window as any).__TAURI_IPC__) { // tauri环境
   console.log("tauri环境")

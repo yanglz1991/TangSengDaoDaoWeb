@@ -78,6 +78,17 @@ export class ChannelDataSource implements IChannelDataSource {
         }
         return WKApp.apiClient.post(`groups/${channel.channelID}/members`, {
             members: uids,
+        }).catch((err: any) => {
+            const msg = err?.msg || ''
+            // 群开启了邀请模式，普通成员不能直接添加 -> 自动改为提交邀请审批，等待群主/管理员审核
+            if (msg.indexOf('邀请模式') !== -1) {
+                return WKApp.apiClient.post(`groups/${channel.channelID}/member/invite`, {
+                    uids: uids,
+                }).then(() => {
+                    return Promise.reject({ msg: '已提交邀请，等待群主或管理员审核', __invitePending: true })
+                })
+            }
+            return Promise.reject(err)
         })
     }
 

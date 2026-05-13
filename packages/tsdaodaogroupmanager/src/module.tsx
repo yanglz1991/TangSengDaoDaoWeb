@@ -8,6 +8,7 @@ import { ChannelSettingManager } from "@tsdaodao/base/src/Service/ChannelSetting
 import UserSelect from "@tsdaodao/base/src/Components/UserSelect";
 import ChannelBlacklist from "./Components/ChannelBlacklist";
 import ChannelManagerList from "./Components/ChannelManagerList";
+import GroupApprovalList from "./Components/GroupApprovalList";
 
 export default class GroupManagerModule implements IModule {
     id(): string {
@@ -82,6 +83,34 @@ export default class GroupManagerModule implements IModule {
                                         ctx.loading = false
                                         Toast.error(err.msg)
                                     })
+                            }
+                        }
+                    })
+                ]
+            })
+        })
+
+        // 审批记录
+        WKApp.shared.channelManageRegister("channel.setting.manage.approvalRecords", (context) => {
+            const data = context.routeData() as ChannelSettingRouteData
+            const subscriberOfMe = data.subscriberOfMe
+
+            if (subscriberOfMe?.role !== GroupRole.owner && subscriberOfMe?.role !== GroupRole.manager) {
+                return undefined
+            }
+
+            return new Section({
+                subtitle: "仅显示尚未审批的入群邀请，已拒绝的不再展示。点击进入可通过或拒绝。",
+                rows: [
+                    new Row({
+                        cell: ListItem,
+                        properties: {
+                            title: "审批记录",
+                            onClick: () => {
+                                context.push(
+                                    <GroupApprovalList routeContext={context} />,
+                                    { title: "审批记录" }
+                                )
                             }
                         }
                     })

@@ -456,8 +456,13 @@ export class OrganizationalGroupNew extends Component<
           getOptPersonnelData
         );
       } catch (error: any) {
-        Toast.error(error.msg);
-        return
+        // 邀请模式：已转为提交审批，给用户友好提示，关闭弹窗
+        if (error?.__invitePending) {
+          Toast.info(error.msg);
+        } else {
+          Toast.error(error.msg);
+          return
+        }
       }
 
     }

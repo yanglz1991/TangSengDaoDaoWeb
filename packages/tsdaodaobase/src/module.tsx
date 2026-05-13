@@ -981,13 +981,23 @@ export default class BaseModule implements IModule {
                           );
                         }
                       } else {
-                        await WKApp.dataSource.channelDataSource.addSubscribers(
-                          channel,
-                          addSelectItems.map((item) => {
-                            return item.id;
-                          })
-                        );
-                        context.pop();
+                        try {
+                          await WKApp.dataSource.channelDataSource.addSubscribers(
+                            channel,
+                            addSelectItems.map((item) => {
+                              return item.id;
+                            })
+                          );
+                          context.pop();
+                        } catch (error: any) {
+                          // 邀请模式：已转为提交审批，给用户友好提示并关闭面板
+                          if (error?.__invitePending) {
+                            Toast.info(error.msg);
+                            context.pop();
+                          } else {
+                            Toast.error(error.msg);
+                          }
+                        }
                       }
                       addFinishButtonContext.loading(false);
                     },

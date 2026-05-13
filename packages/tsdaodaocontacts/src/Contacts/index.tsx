@@ -6,7 +6,7 @@ import { toSimplized } from "@tsdaodao/base";
 import { getPinyin } from "@tsdaodao/base";
 import classnames from "classnames";
 import { Toast } from "@douyinfe/semi-ui";
-import { Channel, ChannelTypePerson, WKSDK,ChannelInfoListener,ChannelInfo } from "wukongimjssdk";
+import { Channel, ChannelTypePerson, WKSDK,ChannelInfoListener,ChannelInfo, Setting } from "wukongimjssdk";
 import { ContactsListManager } from "../Service/ContactsListManager";
 import { Card } from "@tsdaodao/base/src/Messages/Card";
 import WKAvatar from "@tsdaodao/base/src/Components/WKAvatar";
@@ -236,7 +236,10 @@ export default class ContactsList extends Component<any, ContactsState> {
                                     card.uid = selectedItem?.uid || ""
                                     card.name = selectedItem?.name || ""
                                     card.vercode = selectedItem?.vercode||""
-                                    WKSDK.shared().chatManager.send(card, channel)
+                                    // 私聊默认开启已读回执
+                                    const setting = new Setting()
+                                    setting.receiptEnabled = true
+                                    WKSDK.shared().chatManager.send(card, channel, setting)
                                 }
                                 if (personChannels.length > 0) {
                                     Toast.success("分享成功！")

@@ -1154,7 +1154,10 @@ export default class ConversationVM extends ProviderListener {
     async sendMessage(content: MessageContent, channel: Channel): Promise<Message> {
         const channelInfo = WKSDK.shared().channelManager.getChannelInfo(channel)
         let setting = new Setting()
-        if (channelInfo?.orgData.receipt === 1) {
+        // 私聊默认开启已读回执，群聊不开启
+        if (channel.channelType === ChannelTypePerson) {
+            setting.receiptEnabled = true
+        } else if (channelInfo?.orgData.receipt === 1) {
             setting.receiptEnabled = true
         }
         const message = await WKSDK.shared().chatManager.send(content, channel, setting)

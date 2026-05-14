@@ -25,11 +25,13 @@ export default class GlobalSearchVM extends ProviderListener {
                 { tab: '文件', itemKey: 'files' },
             ];
         }
+        // 首页全局搜索的"文件"tab 依赖服务端 only_message=1 + WuKongIM 全文搜索插件
+        // (wk.plugin.search/usersearch)，多数部署未启用该插件 -> 搜不到结果，
+        // 因此从首页搜索入口移除该 tab。频道内搜索的文件 tab 保留。
         return [
             { tab: '聊天', itemKey: 'all' },
             { tab: '联系人', itemKey: 'contacts' },
             { tab: '群组', itemKey: 'groups' },
-            { tab: '文件', itemKey: 'files' },
         ];
     }
 
@@ -150,12 +152,11 @@ export default class GlobalSearchVM extends ProviderListener {
                 this.searchResult = res
             }
 
-            // 替换备注如果有备注的话
-            this.searchResult.friends?.forEach((v: any) => {
-                if (v.channel_remark && v.channel_remark !== "") {
-                    v.channel_name = v.channel_remark
-                }
-            })
+            // 注：联系人 channel_name 不再用 channel_remark 强制覆盖。
+            // 服务端 /v1/search/global 已经按"备注优先 + <mark> 高亮"决定展示文案：
+            //   - 命中昵称 -> channel_name = "<mark>昵称</mark>"
+            //   - 命中备注 -> channel_name = "<mark>备注</mark>"
+            // 在前端再做覆盖会丢失 <mark> 高亮，且与命中字段不一致。
             this.searchResult.groups?.forEach((v: any) => {
                 if (v.channel_remark && v.channel_remark !== "") {
                     v.channel_name = v.channel_remark

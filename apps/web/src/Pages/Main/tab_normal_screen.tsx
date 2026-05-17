@@ -166,29 +166,36 @@ export class TabNormalScreen extends Component<TabNormalScreenProps> {
         </Modal>
 
         <Modal
-          title="检测更新"
+          title={vm.isForceUpdate ? "发现强制更新" : "检测更新"}
           visible={vm.showAppVersion}
           centered
           closeOnEsc={false}
           maskClosable={false}
+          // 强制更新：右上角不渲染 X 关闭按钮（Semi UI 默认 closable=true）
+          closable={!vm.isForceUpdate}
           bodyStyle={{ overflow: "auto", height: 200 }}
           onCancel={() => {
+            // 强制更新场景下任何关闭尝试都被拒绝
+            if (vm.isForceUpdate) return;
             vm.showAppVersion = false;
             vm.notifyListener();
           }}
           footer={
             vm.showAppUpdateOperation ? (
               <>
-                <Button
-                  theme="solid"
-                  type="tertiary"
-                  onClick={() => {
-                    vm.showAppVersion = false;
-                    vm.notifyListener();
-                  }}
-                >
-                  取消
-                </Button>
+                {/* 强制更新时不渲染"取消"按钮，只能点"立即升级" */}
+                {!vm.isForceUpdate && (
+                  <Button
+                    theme="solid"
+                    type="tertiary"
+                    onClick={() => {
+                      vm.showAppVersion = false;
+                      vm.notifyListener();
+                    }}
+                  >
+                    取消
+                  </Button>
+                )}
                 <Button
                   theme="solid"
                   type="primary"
@@ -196,7 +203,7 @@ export class TabNormalScreen extends Component<TabNormalScreenProps> {
                     vm.installUpdate();
                   }}
                 >
-                  更新
+                  {vm.isForceUpdate ? "立即升级" : "更新"}
                 </Button>
               </>
             ) : undefined

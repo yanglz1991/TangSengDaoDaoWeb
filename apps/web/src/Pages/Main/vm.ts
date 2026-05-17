@@ -46,6 +46,10 @@ export default class MainVM extends ProviderListener {
   showAppUpdate: boolean;
   showAppUpdateOperation: boolean;
   appUpdateProgress: number;
+  // 是否强制更新（来自服务端 is_force 字段）
+  // - true: 弹窗无关闭按钮、无取消按钮、不响应 Esc/mask，必须点"立即升级"才能继续使用
+  // - false: 普通更新，可关闭弹窗
+  isForceUpdate: boolean = false;
 
   didMount(): void {
     if (WKApp.route.currentPath) {
@@ -93,6 +97,8 @@ export default class MainVM extends ProviderListener {
         appVersion: message.version,
         updateDesc: message.releaseNotes,
       };
+      // 强制更新标志：服务端 pcupdater 返回 isForce=1 时锁死弹窗
+      this.isForceUpdate = Number(message?.isForce || 0) === 1;
       this.showAppVersion = true;
       this.notifyListener();
     });

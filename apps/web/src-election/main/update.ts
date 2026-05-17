@@ -44,9 +44,18 @@ function checkUpdate(win: BrowserWindow) {
   autoUpdater.on("update-available", (message) => {
     logger.info('检查到有更新');
     logger.info(message);
+    // 显式提取 isForce —— electron-updater 解析 yml 时会保留服务端响应里的自定义字段，
+    // 但 IPC structured clone 偶发会丢非标准字段，这里显式合并到一份纯 object 透传给 renderer。
+    const isForce = Number((message as any)?.isForce || 0);
     sendUpdateMessage({
       cmd: "update-available",
-      data: message,
+      data: {
+        version: (message as any)?.version,
+        releaseNotes: (message as any)?.releaseNotes,
+        releaseName: (message as any)?.releaseName,
+        releaseDate: (message as any)?.releaseDate,
+        isForce,
+      },
     });
   });
 
@@ -90,8 +99,25 @@ function checkUpdate(win: BrowserWindow) {
     autoUpdater.downloadUpdate();
   });
   // 退出并安装更新包
+  // quitAndInstall(isSilent, isForceRunAfter)
+  //   - isSilent=true：Win NSIS 安装包静默执行（不弹安装向导界面），强制更新场景下用户无法中断
+  //   - isForceRunAfter=true：安装结束后强制启动新版本，避免某些 NSIS 配置下不自动启动
+  // 兜底：1.5s 内若 quitAndInstall 未触发进程退出（极个别签名/权限/AV 拦截场景），强制 app.exit(0)
   ipcMain.on("install-update", () => {
-    autoUpdater.quitAndInstall();
+    logger.info('[install-update] quitAndInstall(true, true)');
+    try {
+      autoUpdater.quitAndInstall(true, true);
+    } catch (err) {
+      logger.error('[install-update] quitAndInstall threw', err);
+    }
+    setTimeout(() => {
+      logger.warn('[install-update] fallback app.exit(0) after 1500ms');
+      try {
+        app.exit(0);
+      } catch (e) {
+        logger.error('[install-update] app.exit failed', e);
+      }
+    }, 1500);
   });
 }
 

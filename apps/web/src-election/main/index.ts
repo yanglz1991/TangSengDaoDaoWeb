@@ -1,3 +1,4 @@
+import "./multi-instance"; // 必须在 logger 之前：分配独立 userData 槽位，实现 QQ 式独立多开
 import "./logger"; // 必须最先 import，保证后续任何崩溃都被捕获
 import {
   app,
@@ -529,21 +530,10 @@ app.on("open-url", (event, url) => {
   onDeepLink(url);
 });
 
-// 单例模式启动
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-} else {
-  app.on("second-instance", (event, argv) => {
-    if (mainWindow) {
-      mainWindow.show();
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
-    }
-  });
-}
+// 多开模式：独立多开的槽位分配在 ./multi-instance 中已完成。
+// 每个实例都已经拿到自己槽位的 SingleInstanceLock（不同 userData 路径 → 不同
+// Windows 命名互斥量 / Linux/Mac SingletonLock 文件），所以这里不再需要
+// requestSingleInstanceLock，也不会再有 "second-instance" 事件触发。
 
 app.on("ready", () => {
   // AUMID 必须在创建 BrowserWindow 之前设置，否则 Win10 任务栏/托盘会因 AUMID 不一致清掉图标
